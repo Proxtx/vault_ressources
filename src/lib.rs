@@ -212,7 +212,7 @@ pub trait RessourceType {
     fn id() -> &'static str;
 }
 
-pub trait ReadableRessourceType: RessourceType
+pub trait ReadableRessource: RessourceType
 where
     Self::Error: 'static,
 {
@@ -222,7 +222,42 @@ where
         Self: Sized;
 }
 
-pub trait WritableRessourceType: RessourceType
+#[derive(Debug, Error)]
+pub enum ReadableRessourceError<T: ReadableRessource> {
+    #[error(
+        "Ressource {ressource_type} had an error parsing ressource data of ressource at {ressource_path}. OSPath: {path}. Error: {readable_error}"
+    )]
+    ReadableRessourceError {
+        ressource_type: &'static str,
+        readable_error: T::Error,
+        ressource_path: RessourcePath,
+        path: PathBuf,
+    },
+
+    #[error("{0}")]
+    RessourceError(#[from] RessourceError),
+}
+
+impl<T: ReadableRessource> From<ReadableRessourceError<T>> for RessourceError {
+    fn from(value: ReadableRessourceError<T>) -> Self {
+        match value {
+            ReadableRessourceError::ReadableRessourceError {
+                ressource_type,
+                readable_error,
+                ressource_path,
+                path,
+            } => RessourceError::InvalidData {
+                ressource_type,
+                ressource_path,
+                path,
+                error: Box::new(readable_error),
+            },
+            ReadableRessourceError::RessourceError(v) => v,
+        }
+    }
+}
+
+pub trait WritableRessource: RessourceType
 where
     Self::Error: 'static,
 {
@@ -258,7 +293,7 @@ impl RessourceType for FolderRessource {
     }
 }
 
-impl ReadableRessourceType for FolderRessource {
+impl ReadableRessource for FolderRessource {
     type Error = FolderRessourceError;
     async fn read(path: &Path) -> Result<Self, FolderRessourceError> {
         if !fs::File::open(path)
@@ -283,7 +318,7 @@ impl ReadableRessourceType for FolderRessource {
     }
 }
 
-impl WritableRessourceType for FolderRessource {
+impl WritableRessource for FolderRessource {
     type Error = FolderRessourceError;
     async fn write(&self, path: &Path) -> Result<(), FolderRessourceError> {
         fs::create_dir(path)
@@ -348,7 +383,7 @@ impl<T: RessourceType> MetaRessource<T> {
 
     pub fn new(path: RessourcePath) -> RessourceResult<Self>
     where
-        T: WritableRessourceType,
+        T: WritableRessource,
     {
         let id = match path
             .clone()
@@ -398,7 +433,7 @@ pub struct Ressource<T: RessourceType> {
 impl<T: RessourceType> Ressource<T> {
     pub async fn load(path: RessourcePath) -> RessourceResult<Self>
     where
-        T: ReadableRessourceType,
+        T: ReadableRessource,
     {
         let meta_ressource = MetaRessource::<T>::load(path.clone()).await?;
         let data = T::read(&meta_ressource.data_path()).await.map_err(|e| {
@@ -418,7 +453,7 @@ impl<T: RessourceType> Ressource<T> {
 
     pub async fn new(path: RessourcePath, data: T) -> RessourceResult<Self>
     where
-        T: WritableRessourceType,
+        T: WritableRessource,
     {
         let meta_ressource = MetaRessource::new(path.clone())?;
         let mut parent_ressource = path.clone();
