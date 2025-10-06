@@ -4,7 +4,7 @@ pub mod traits;
 
 use crate::error::{RessourceError, RessourceResult, WriteDataError};
 use crate::path::{RessourceId, RessourcePath, RessourcePathComponent};
-use crate::traits::{ReadableRessource, ReadableRessourceError, RessourceType, WritableRessource};
+use crate::traits::{ReadableRessource, RessourceType, WritableRessource};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::{
