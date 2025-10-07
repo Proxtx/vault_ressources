@@ -23,6 +23,12 @@ impl From<RessourceId> for RessourcePathComponent {
     }
 }
 
+impl From<RessourcePath> for RessourcePathComponent {
+    fn from(value: RessourcePath) -> Self {
+        RessourcePathComponent::Path(value)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct RessourcePath {
     pub path: Vec<RessourcePathComponent>,
@@ -76,8 +82,22 @@ impl RessourcePath {
         res
     }
 
-    pub fn append(&mut self, component: RessourcePathComponent) {
+    pub fn push(&mut self, component: RessourcePathComponent) {
         self.path.push(component);
+    }
+
+    pub fn append(&mut self, path: &mut Vec<RessourcePathComponent>) {
+        self.path.append(path);
+    }
+
+    pub fn append_id(&mut self, path: &mut Vec<RessourceId>) {
+        let mut v = Vec::new();
+        v.append(path);
+        let mut res = v
+            .into_iter()
+            .map(|v| v.into())
+            .collect::<Vec<RessourcePathComponent>>();
+        self.append(&mut res);
     }
 
     pub fn up(&mut self) -> Option<RessourcePathComponent> {
@@ -88,5 +108,9 @@ impl RessourcePath {
         let mut path = self.resolve();
         path.add_extension(".meta.json");
         path
+    }
+
+    pub fn from_vec(root: PathBuf, path: Vec<RessourcePathComponent>) -> Self {
+        RessourcePath { path, root }
     }
 }
