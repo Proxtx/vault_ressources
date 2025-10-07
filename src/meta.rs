@@ -6,7 +6,7 @@ use tokio::fs::read_to_string;
 
 use crate::{
     error::{RessourceError, RessourceResult},
-    path::{RessourceId, RessourcePath, RessourcePathComponent},
+    path::{RessourceId, RessourcePath},
     traits::{RessourceType, WritableRessource},
 };
 
@@ -61,22 +61,13 @@ impl<T: RessourceType> MetaRessource<T> {
     where
         T: WritableRessource,
     {
-        let id = match path
+        let id = path
             .clone()
             .up()
             .ok_or_else(|| RessourceError::RessourceAtRoot {
                 path: path.resolve(),
                 ressource_path: path.clone(),
-            })? {
-            RessourcePathComponent::Ressource(id) => id,
-            RessourcePathComponent::Path(last_component_path) => {
-                return Err(RessourceError::RessourceIdFolded {
-                    path: path.resolve(),
-                    ressource_path: path,
-                    folded: last_component_path,
-                });
-            }
-        };
+            })?;
 
         let metadata = RessourceMetadata {
             data_extension: T::data_extension().to_string(),

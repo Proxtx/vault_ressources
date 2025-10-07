@@ -31,10 +31,37 @@ pub enum FolderRessourceError {
         "FolderRessource: Invalid Filename in folder at: {path}. Invalid filename display: {filename}"
     )]
     Filename { path: PathBuf, filename: String },
+
+    #[error(
+        "FolderRessource: Can't create Folder that is not empty at: {path}. Contents: {ressources:?}"
+    )]
+    CreateNonEmptyFolder {
+        path: PathBuf,
+        ressources: Vec<RessourceId>,
+    },
 }
 
+#[derive(Debug, Clone)]
 pub struct FolderRessource {
     pub ressources: Vec<RessourceId>,
+}
+
+impl FolderRessource {
+    pub fn new() -> Self {
+        FolderRessource {
+            ressources: Vec::new(),
+        }
+    }
+
+    pub fn new_with_content(ressources: Vec<RessourceId>) -> Self {
+        FolderRessource { ressources }
+    }
+}
+
+impl Default for FolderRessource {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl RessourceType for FolderRessource {
@@ -86,6 +113,13 @@ impl ReadableRessource for FolderRessource {
 impl WritableRessource for FolderRessource {
     type Error = FolderRessourceError;
     async fn write(&self, path: &Path) -> Result<(), FolderRessourceError> {
+        if !self.ressources.is_empty() {
+            return Err(FolderRessourceError::CreateNonEmptyFolder {
+                path: path.to_path_buf(),
+                ressources: self.ressources.clone(),
+            });
+        }
+
         fs::create_dir(path)
             .await
             .map_err(|e| FolderRessourceError::CreatingFolder {

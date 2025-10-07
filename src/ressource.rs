@@ -45,13 +45,15 @@ impl<T: RessourceType> Ressource<T> {
                 ressource_path: path.clone(),
             })?;
 
-        Ressource::<FolderRessource>::load(path.clone())
-            .await
-            .map_err(|e| RessourceError::ParentRessource {
-                path: path.resolve(),
-                ressource_path: path.clone(),
-                folder_error: Box::new(e),
-            })?;
+        if !parent_ressource.path.is_empty() {
+            Ressource::<FolderRessource>::load(parent_ressource)
+                .await
+                .map_err(|e| RessourceError::ParentRessource {
+                    path: path.resolve(),
+                    ressource_path: path.clone(),
+                    folder_error: Box::new(e),
+                })?;
+        }
 
         fs::write(
             path.metadata_path(),
